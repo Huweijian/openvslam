@@ -122,6 +122,7 @@ cv::Mat landmark::get_descriptor() const {
     return descriptor_.clone();
 }
 
+// 从能观测到这个路标的所有描述子中找到最好的描述子
 void landmark::compute_descriptor() {
     std::map<keyframe*, unsigned int> observations;
     {
@@ -137,6 +138,7 @@ void landmark::compute_descriptor() {
     }
 
     // 対応している特徴点の特徴量を集める
+    // 把所有观察到当前路标的关键帧取出来，并把它们的描述子取出来。
     std::vector<cv::Mat> descriptors;
     descriptors.reserve(observations.size());
     for (const auto& observation : observations) {
@@ -148,9 +150,9 @@ void landmark::compute_descriptor() {
         }
     }
 
-    // ハミング距離の中央値を計算
+    // ハミング距離の中央値を計算(汉明距离中值计算)
 
-    // まず特徴量間の距離を全組み合わせで計算
+    // まず特徴量間の距離を全組み合わせで計算(计算不同特征之间彼此的汉明距离)
     const auto num_descs = descriptors.size();
     std::vector<std::vector<unsigned int>> hamm_dists(num_descs, std::vector<unsigned int>(num_descs));
     for (unsigned int i = 0; i < num_descs; ++i) {
@@ -162,7 +164,9 @@ void landmark::compute_descriptor() {
         }
     }
 
-    // 中央値に最も近いものを求める
+    // 中央値に最も近いものを求める(求中值)
+    // 列出每个描述子距离其他所有描述子的汉明距离，用中值表示当前描述子到其他描述子的距离
+    // 找到距离其他描述子距离最近的那个描述子作为当前路标唯一描述子
     unsigned int best_median_dist = match::MAX_HAMMING_DIST;
     unsigned int best_idx = 0;
     for (unsigned idx = 0; idx < num_descs; ++idx) {
@@ -182,6 +186,7 @@ void landmark::compute_descriptor() {
     }
 }
 
+// 计算路标的方向和深度上下界
 void landmark::update_normal_and_depth() {
     std::map<keyframe*, unsigned int> observations;
     keyframe* ref_keyfrm;
@@ -201,6 +206,7 @@ void landmark::update_normal_and_depth() {
         return;
     }
 
+    // 枚举所有观测，计算平均方向和
     Vec3_t mean_normal = Vec3_t::Zero();
     unsigned int num_observations = 0;
     for (const auto& observation : observations) {
@@ -211,6 +217,8 @@ void landmark::update_normal_and_depth() {
         ++num_observations;
     }
 
+    // 根据金字塔等级，计算深度的上下界。
+    // 最大值：三角化深度*金字塔缩放倍数    最小值：三角化深度*(缩放倍数/最大缩放倍数)
     const Vec3_t cam_to_lm_vec = pos_w - ref_keyfrm->get_cam_center();
     const auto dist = cam_to_lm_vec.norm();
     const auto scale_level = ref_keyfrm->undist_keypts_.at(observations.at(ref_keyfrm)).octave;

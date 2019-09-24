@@ -51,6 +51,7 @@ bool initializer::initialize(data::frame& curr_frm) {
     switch (setup_type_) {
         case camera::setup_type_t::Monocular: {
             // construct an initializer if not constructed
+            // 如果是第一帧，那么把这帧数据保存下来作为参考帧，等待下一帧数据来进行初始化
             if (state_ == initializer_state_t::NotReady) {
                 create_initializer(curr_frm);
                 return false;
@@ -99,9 +100,11 @@ void initializer::create_initializer(data::frame& curr_frm) {
     }
 
     // initialize matchings (init_idx -> curr_idx)
+    // 初始化匹配点为-1
     std::fill(init_matches_.begin(), init_matches_.end(), -1);
 
     // build a initializer
+    // 构造一个初始化器
     initializer_.reset(nullptr);
     switch (init_frm_.camera_->model_type_) {
         case camera::model_type_t::Perspective:
@@ -125,9 +128,11 @@ void initializer::create_initializer(data::frame& curr_frm) {
 bool initializer::try_initialize_for_monocular(data::frame& curr_frm) {
     assert(state_ == initializer_state_t::Initializing);
 
+    // 特征匹配
     match::area matcher(0.9, true);
     const auto num_matches = matcher.match_in_consistent_area(init_frm_, curr_frm, prev_matched_coords_, init_matches_, 100);
 
+    // 匹配过少，抛弃参考帧
     if (num_matches < min_num_triangulated_) {
         // rebuild the initializer with the next frame
         reset();
@@ -135,6 +140,7 @@ bool initializer::try_initialize_for_monocular(data::frame& curr_frm) {
     }
 
     // try to initialize with the current frame
+    // 匹配足够，利用初始化器进行初始化
     assert(initializer_);
     return initializer_->initialize(curr_frm, init_matches_);
 }
@@ -149,6 +155,7 @@ bool initializer::create_map_for_monocular(data::frame& curr_frm) {
         const auto is_triangulated = initializer_->get_triangulated_flags();
 
         // make invalid the matchings which have not been triangulated
+        // 找出所有成功三角化的匹配点
         for (unsigned int i = 0; i < init_matches_.size(); ++i) {
             if (init_matches_.at(i) < 0) {
                 continue;
@@ -207,6 +214,7 @@ bool initializer::create_map_for_monocular(data::frame& curr_frm) {
         // update the descriptor
         lm->compute_descriptor();
         // update the geometry
+        // 计算路标的方向和深度上下界
         lm->update_normal_and_depth();
 
         // set the 2D-3D assocications to the current frame

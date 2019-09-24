@@ -33,11 +33,11 @@ void mono_tracking(const std::shared_ptr<openvslam::config>& cfg,
                    const unsigned int frame_skip, const bool no_sleep, const bool auto_term,
                    const bool eval_log, const std::string& map_db_path) {
     const euroc_sequence sequence(sequence_dir_path);
-    const auto frames = sequence.get_frames();
+    const auto frames = sequence.get_frames(); // frame：所有数据(时间戳+图像
 
-    // build a SLAM system
+    // build a SLAM system 1. 配置cfg参数(相机，ORB阈值等) 2. 加载/初始化数据库  3. 构造tracking mapping optim 三大模块
     openvslam::system SLAM(cfg, vocab_file_path);
-    // startup the SLAM process
+    // startup the SLAM process 开启建图和优化线程，处于待机状态(tracking线程手动控制输入数据，另外两个线程随时待机)
     SLAM.startup();
 
     // create a viewer object

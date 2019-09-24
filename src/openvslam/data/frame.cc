@@ -23,6 +23,7 @@ frame::frame(const cv::Mat& img_gray, const double timestamp,
              const cv::Mat& mask)
         : id_(next_id_++), bow_vocab_(bow_vocab), extractor_(extractor), extractor_right_(nullptr),
           timestamp_(timestamp), camera_(camera), depth_thr_(depth_thr) {
+    // ORB的scale参数
     // ORBのスケール情報を取得
     update_orb_info();
 
@@ -34,13 +35,16 @@ frame::frame(const cv::Mat& img_gray, const double timestamp,
     }
 
     // keypointsをundistortionする
+    // keypts去畸变
     camera_->undistort_keypoints(keypts_, undist_keypts_);
 
     // ステレオパラメータは全て無効にする
+    // 禁用stereo参数
     stereo_x_right_ = std::vector<float>(num_keypts_, -1);
     depths_ = std::vector<float>(num_keypts_, -1);
 
     // bearing vectorに変換する
+    // 把keypts的坐标转换成像极坐标系下的方向向量
     camera->convert_keypoints_to_bearings(undist_keypts_, bearings_);
 
     // 3次元点との対応を初期化
@@ -48,6 +52,7 @@ frame::frame(const cv::Mat& img_gray, const double timestamp,
     outlier_flags_ = std::vector<bool>(num_keypts_, false);
 
     // 全特徴点をグリッドに割り当てる
+    // 特征点放入网格中
     assign_keypoints_to_grid(camera_, undist_keypts_, keypt_indices_in_cells_);
 }
 

@@ -158,6 +158,7 @@ void tracking_module::reset() {
     tracking_state_ = tracker_state_t::NotInitialized;
 }
 
+// track实现
 void tracking_module::track() {
     if (tracking_state_ == tracker_state_t::NotInitialized) {
         tracking_state_ = tracker_state_t::Initializing;
@@ -174,11 +175,13 @@ void tracking_module::track() {
     // LOCK the map database
     std::lock_guard<std::mutex> lock(data::map_database::mtx_database_);
 
+    // 初始化
     if (tracking_state_ == tracker_state_t::Initializing) {
         if (!initialize()) {
             return;
         }
 
+        // 初始化成功
         // update the reference keyframe, local keyframes, and local landmarks
         update_local_map();
 
@@ -191,6 +194,7 @@ void tracking_module::track() {
         // state transition to Tracking mode
         tracking_state_ = tracker_state_t::Tracking;
     }
+    // 初始化后的常规tracking
     else {
         // apply replace of landmarks observed in the last frame
         apply_landmark_replace();
@@ -255,6 +259,7 @@ void tracking_module::track() {
     last_frm_ = curr_frm_;
 }
 
+// 初始化
 bool tracking_module::initialize() {
     // try to initialize with the current frame
     initializer_.initialize(curr_frm_);

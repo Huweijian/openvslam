@@ -95,6 +95,7 @@ cv::Mat convert_json_to_descriptors(const nlohmann::json& json_descriptors) {
 void assign_keypoints_to_grid(camera::base* camera, const std::vector<cv::KeyPoint>& undist_keypts,
                               std::vector<std::vector<std::vector<unsigned int>>>& keypt_indices_in_cells) {
     // メモリ領域を確保
+    // 预先分配vector的存储空间
     const unsigned int num_keypts = undist_keypts.size();
     const unsigned int num_to_reserve = 0.5 * num_keypts / (camera->num_grid_cols_ * camera->num_grid_rows_);
     keypt_indices_in_cells.resize(camera->num_grid_cols_);
@@ -106,6 +107,7 @@ void assign_keypoints_to_grid(camera::base* camera, const std::vector<cv::KeyPoi
     }
 
     // cellの位置を計算して格納
+    // 在grid的对应位置的向量中push进去cell的idx
     for (unsigned int idx = 0; idx < num_keypts; ++idx) {
         const auto& keypt = undist_keypts.at(idx);
         int cell_idx_x, cell_idx_y;

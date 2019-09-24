@@ -124,6 +124,7 @@ void perspective::undistort_keypoints(const std::vector<cv::KeyPoint>& dist_keyp
     }
 }
 
+// 把keypts的坐标转换成像极坐标系下的方向向量
 void perspective::convert_keypoints_to_bearings(const std::vector<cv::KeyPoint>& undist_keypts, eigen_alloc_vector<Vec3_t>& bearings) const {
     bearings.resize(undist_keypts.size());
     for (unsigned long idx = 0; idx < undist_keypts.size(); ++idx) {

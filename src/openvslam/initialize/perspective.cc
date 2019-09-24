@@ -24,7 +24,9 @@ perspective::~perspective() {
     spdlog::debug("DESTRUCT: initialize::perspective");
 }
 
+// 执行真空相机的初始化操作
 bool perspective::initialize(const data::frame& cur_frm, const std::vector<int>& ref_matches_with_cur) {
+    // 准备数据
     // set the current camera model
     cur_camera_ = cur_frm.camera_;
     // store the keypoints and bearings
@@ -39,11 +41,11 @@ bool perspective::initialize(const data::frame& cur_frm, const std::vector<int>&
             ref_cur_matches_.emplace_back(std::make_pair(ref_idx, cur_idx));
         }
     }
-
     // set the current camera matrix
     cur_cam_matrix_ = get_camera_matrix(cur_frm.camera_);
 
     // compute H and F matrices
+    // 分两个线程同时计算H和F
     auto homography_solver = solve::homography_solver(ref_undist_keypts_, cur_undist_keypts_, ref_cur_matches_, 1.0);
     auto fundamental_solver = solve::fundamental_solver(ref_undist_keypts_, cur_undist_keypts_, ref_cur_matches_, 1.0);
     std::thread thread_for_H(&solve::homography_solver::find_via_ransac, &homography_solver, num_ransac_iters_, true);
