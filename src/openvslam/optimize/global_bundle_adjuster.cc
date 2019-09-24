@@ -24,13 +24,13 @@ global_bundle_adjuster::global_bundle_adjuster(data::map_database* map_db, const
         : map_db_(map_db), num_iter_(num_iter), use_huber_kernel_(use_huber_kernel) {}
 
 void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_global_BA, bool* const force_stop_flag) const {
-    // 1. データを集める
+    // 1. データを集める(本地化变量)
 
     const auto keyfrms = map_db_->get_all_keyframes();
     const auto lms = map_db_->get_all_landmarks();
     std::vector<bool> is_optimized_lm(lms.size(), true);
 
-    // 2. optimizerを構築
+    // 2. optimizerを構築(构建优化器)
 
     auto linear_solver = ::g2o::make_unique<::g2o::LinearSolverCSparse<::g2o::BlockSolver_6_3::PoseMatrixType>>();
     auto block_solver = ::g2o::make_unique<::g2o::BlockSolver_6_3>(std::move(linear_solver));
@@ -44,6 +44,7 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
     }
 
     // 3. keyframeをg2oのvertexに変換してoptimizerにセットする
+    //    (将关键帧转换为g2o顶点并设置为优化器)
 
     // shot vertexのcontainer
     g2o::se3::shot_vertex_container keyfrm_vtx_container(0, keyfrms.size());
@@ -62,6 +63,7 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
     }
 
     // 4. keyframeとlandmarkのvertexをreprojection edgeで接続する
+    //    (使用重投影边连接关键帧和路标)
 
     // landmark vertexのcontainer
     g2o::landmark_vertex_container lm_vtx_container(keyfrm_vtx_container.get_max_vertex_id() + 1, lms.size());
@@ -71,7 +73,7 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
     std::vector<reproj_edge_wrapper> reproj_edge_wraps;
     reproj_edge_wraps.reserve(keyfrms.size() * lms.size());
 
-    // 有意水準5%のカイ2乗値
+    // 有意水準5%のカイ2乗値 (5%置信度的卡方检验值)
     // 自由度n=2
     constexpr float chi_sq_2D = 5.99146;
     const float sqrt_chi_sq_2D = std::sqrt(chi_sq_2D);
@@ -79,6 +81,7 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
     constexpr float chi_sq_3D = 7.81473;
     const float sqrt_chi_sq_3D = std::sqrt(chi_sq_3D);
 
+    // 枚举每个路标
     for (unsigned int i = 0; i < lms.size(); ++i) {
         auto lm = lms.at(i);
         if (!lm) {
@@ -88,6 +91,7 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
             continue;
         }
         // landmarkをg2oのvertexに変換してoptimizerにセットする
+        // (将路标转换为g2o顶点并设置为优化器)
         auto lm_vtx = lm_vtx_container.create_vertex(lm, false);
         optimizer.addVertex(lm_vtx);
 
@@ -127,7 +131,7 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
         }
     }
 
-    // 5. 最適化を実行
+    // 5. 最適化を実行(执行优化)
 
     optimizer.initializeOptimization();
     optimizer.optimize(num_iter_);
@@ -136,13 +140,14 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
         return;
     }
 
-    // 6. 結果を取り出す
+    // 6. 結果を取り出す(取出结果)
 
     for (auto keyfrm : keyfrms) {
         if (keyfrm->will_be_erased()) {
             continue;
         }
         auto keyfrm_vtx = keyfrm_vtx_container.get_vertex(keyfrm);
+        // 取出pose
         const auto cam_pose_cw = util::converter::to_eigen_mat(keyfrm_vtx->estimate());
         if (lead_keyfrm_id_in_global_BA == 0) {
             keyfrm->set_cam_pose(cam_pose_cw);
@@ -166,6 +171,7 @@ void global_bundle_adjuster::optimize(const unsigned int lead_keyfrm_id_in_globa
             continue;
         }
 
+        // 取出优化后的路标
         auto lm_vtx = lm_vtx_container.get_vertex(lm);
         const Vec3_t pos_w = lm_vtx->estimate();
 
